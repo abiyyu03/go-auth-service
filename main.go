@@ -6,19 +6,20 @@ import (
 	"github.com/abiyyu03/auth-service/handler/middleware"
 	"github.com/abiyyu03/auth-service/repository"
 	"github.com/abiyyu03/auth-service/service"
+	"github.com/abiyyu03/auth-service/service/utils"
 	"github.com/gofiber/fiber/v2"
 	"gorm.io/gorm"
 )
 
 func setupDatabase() (db *gorm.DB, err error) {
 	db, err = driver.InitDB(driver.PostgresOption{
-		Host:                   "localhost",
-		Username:               "user_pemula",
-		Password:               "abiyyucakra99",
-		Name:                   "db_auth",
-		Port:                   "5432",
-		Timezone:               "Asia/Jakarta",
-		DBName:                 "db_auth",
+		Host:                   utils.LoadEnv("DB_HOSTNAME"),
+		Username:               utils.LoadEnv("DB_USERNAME"),
+		Password:               utils.LoadEnv("DB_PASSWORD"),
+		Name:                   utils.LoadEnv("DB_NAME"),
+		Port:                   utils.LoadEnv("DB_PORT"),
+		Timezone:               utils.LoadEnv("DB_TIMEZONE"),
+		DBName:                 utils.LoadEnv("DB_NAME"),
 		MaxPoolSize:            100,
 		BatchSize:              100,
 		PrepareStmt:            true,
