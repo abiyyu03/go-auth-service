@@ -14,7 +14,7 @@ import (
 func setupDatabase() (db *gorm.DB, err error) {
 	db, err = driver.InitDB(driver.PostgresOption{
 		Host:                   utils.LoadEnv("DB_HOSTNAME"),
-		Username:               utils.LoadEnv("DB_USERNAME"),
+		Username:               utils.LoadEnv("DB_USER"),
 		Password:               utils.LoadEnv("DB_PASSWORD"),
 		Name:                   utils.LoadEnv("DB_NAME"),
 		Port:                   utils.LoadEnv("DB_PORT"),
@@ -45,12 +45,16 @@ func main() {
 	roles := &repository.RoleRepo{
 		DB: postgres,
 	}
+	authToken := &repository.AuthTokenRepo{
+		DB: postgres,
+	}
 
 	userServices := &service.UserService{
 		Repo: users,
 	}
 	authServices := &service.AuthService{
-		Repo: users,
+		Repo:          users,
+		AuthTokenRepo: authToken,
 	}
 	roleServices := &service.RoleService{
 		Repo: roles,

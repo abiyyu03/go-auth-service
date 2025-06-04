@@ -1,9 +1,8 @@
 package service
 
 import (
-	"log"
-
 	"github.com/abiyyu03/auth-service/entity/dto"
+	"github.com/abiyyu03/auth-service/entity/model"
 	"github.com/abiyyu03/auth-service/repository"
 	"github.com/abiyyu03/auth-service/service/utils"
 	"github.com/gofiber/fiber/v2"
@@ -14,7 +13,8 @@ type AuthServiceInterface interface {
 }
 
 type AuthService struct {
-	Repo *repository.UserRepo
+	Repo          *repository.UserRepo
+	AuthTokenRepo *repository.AuthTokenRepo
 }
 
 func NewAuthService(repo *repository.UserRepo) AuthServiceInterface {
@@ -35,17 +35,46 @@ func (service *AuthService) Login(ctx *fiber.Ctx, auth *dto.AuthRequest) (resp *
 		return nil, err
 	}
 
-	token, err := utils.CreateJWT(user.Email, user.Fullname, user.Role.ID)
+	//create access token
+	accessToken, err := utils.CreateJWT("access", user.Email, user.Fullname, user.Role.ID)
 
-	log.Println("Token failed to verified:", token)
 	if err != nil {
 		err = fiber.NewError(fiber.StatusInternalServerError, "Internal server error")
 		return nil, err
 	}
-	decryptToken, err := utils.VerifyJWT(token)
+	decryptAccess, err := utils.VerifyJWT(accessToken)
 
 	if err != nil {
 		err = fiber.NewError(fiber.StatusInternalServerError, "Internal server error")
+		return nil, err
+	}
+
+	// create refresh token
+	refreshToken, err := utils.CreateJWT("refresh", user.Email, user.Fullname, user.Role.ID)
+	decryptRefresh, err := utils.VerifyJWT(refreshToken)
+
+	if err != nil {
+		err = fiber.NewError(fiber.StatusInternalServerError, "Internal server error")
+		return nil, err
+	}
+
+	// store auth token in database
+	tokenData := &model.AuthToken{
+		UserID:         user.ID,
+		AccessToken:    accessToken,
+		AccessExpires:  decryptAccess.ExpiresAt.String(),
+		RefreshToken:   refreshToken,
+		RefreshExpires: decryptRefresh.ExpiresAt.String(),
+		Revoked:        false,
+		Expired:        false,
+		IPAddress:      ctx.IP(),
+		Device:         ctx.Get("User-Agent"),
+	}
+
+	err = service.AuthTokenRepo.CreateAuthToken(tokenData)
+
+	if err != nil {
+		err = fiber.NewError(fiber.StatusInternalServerError, "Failed to create auth token")
 		return nil, err
 	}
 
@@ -58,10 +87,10 @@ func (service *AuthService) Login(ctx *fiber.Ctx, auth *dto.AuthRequest) (resp *
 			RoleName: user.Role.RoleName,
 		},
 		TokenData: dto.TokenResponse{
-			AccessToken:    token,
-			AccessExpires:  decryptToken.ExpiresAt.Unix(),
-			RefreshToken:   token,
-			RefreshExpires: decryptToken.ExpiresAt.Unix(),
+			AccessToken:    accessToken,
+			AccessExpires:  decryptAccess.ExpiresAt.Unix(),
+			RefreshToken:   refreshToken,
+			RefreshExpires: decryptRefresh.ExpiresAt.Unix(),
 		},
 	}
 

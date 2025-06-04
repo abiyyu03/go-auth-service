@@ -2,35 +2,49 @@ package middleware
 
 import (
 	"log"
+	"strings"
 
 	"github.com/abiyyu03/auth-service/constant/message"
 	"github.com/abiyyu03/auth-service/entity/dto"
 	"github.com/abiyyu03/auth-service/service"
 	"github.com/gofiber/fiber/v2"
-	jwtware "github.com/gofiber/jwt/v2"
+	jwtware "github.com/gofiber/jwt/v3"
 	"github.com/golang-jwt/jwt/v5"
 )
 
 func HandleJWTMiddleware(roleService *service.RoleService, allowedRoles []int) fiber.Handler {
 	return jwtware.New(jwtware.Config{
-		SigningMethod: "RS256",
-		SigningKey:    "SecretBangetNih",
+		SigningMethod: "HS256",
+		SigningKey:    []byte("SecretBangetNih"),
 		ContextKey:    "user",
 		ErrorHandler: func(ctx *fiber.Ctx, err error) error {
+			log.Print("JWT Error: ", err.Error())
 			return dto.ResponseFailedStruct(ctx, message.ErrUnauthorized.Error(), fiber.ErrUnauthorized.Code)
 		},
 		SuccessHandler: func(ctx *fiber.Ctx) error {
-			// Extract user claims from the token
-			log.Print("Allowed Role ID: ", 1)
-			user := ctx.Locals("user").(*jwt.Token)
-			claims := user.Claims.(jwt.MapClaims)
+			// Ambil token string dari Authorization header
+			authHeader := ctx.Get("Authorization")
+			tokenStr := strings.TrimPrefix(authHeader, "Bearer ")
 
-			// Extract the role_id from the JWT claims
-			roleID := claims["role_id"].(float64)
-			castedRoleID := int(roleID)
+			// Parse token ulang pakai jwt/v5
+			token, err := jwt.Parse(tokenStr, func(token *jwt.Token) (interface{}, error) {
+				if _, ok := token.Method.(*jwt.SigningMethodHMAC); !ok {
+					return nil, fiber.ErrUnauthorized
+				}
+				return []byte("SecretBangetNih"), nil
+			})
+			if err != nil || !token.Valid {
+				return fiber.ErrUnauthorized
+			}
+
+			_, ok := token.Claims.(jwt.MapClaims)
+			if !ok {
+				return fiber.ErrUnauthorized
+			}
+			castedRoleID := token.Claims.(jwt.MapClaims)["role_id"].(float64)
 
 			// Fetch the role by ID using the service
-			allowedRoleId, err := roleService.FindById(castedRoleID)
+			allowedRoleId, err := roleService.FindById(int(castedRoleID))
 
 			if err != nil {
 				return err

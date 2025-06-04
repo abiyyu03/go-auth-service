@@ -1,6 +1,7 @@
 package utils
 
 import (
+	"errors"
 	"time"
 
 	"github.com/golang-jwt/jwt/v5"
@@ -13,26 +14,47 @@ type UserClaims struct {
 	jwt.RegisteredClaims
 }
 
-func CreateJWT(email string, fullname string, roleID int) (string, error) {
+func CreateJWT(tokenType, email, fullname string, roleID int) (ss string, err error) {
 	mySigningKey := []byte("SecretBangetNih")
-	claims := UserClaims{
-		email,
-		fullname,
-		uint(roleID),
-		jwt.RegisteredClaims{
-			ExpiresAt: jwt.NewNumericDate(time.Now().Add(24 * time.Hour)),
-			IssuedAt:  jwt.NewNumericDate(time.Now()),
-			NotBefore: jwt.NewNumericDate(time.Now()),
-		},
-	}
+	var claims *UserClaims
 
-	token := jwt.NewWithClaims(jwt.SigningMethodHS256, claims)
-	ss, err := token.SignedString(mySigningKey)
-	if err != nil {
+	if tokenType != "access" && tokenType != "refresh" {
+		err = errors.New("invalid token type")
 		return "", err
 	}
 
-	return ss, err
+	if tokenType == "access" {
+		claims = &UserClaims{
+			email,
+			fullname,
+			uint(roleID),
+			jwt.RegisteredClaims{
+				ExpiresAt: jwt.NewNumericDate(time.Now().Add(6 * time.Hour)),
+				IssuedAt:  jwt.NewNumericDate(time.Now()),
+				NotBefore: jwt.NewNumericDate(time.Now()),
+			},
+		}
+	} else if tokenType == "refresh" {
+		claims = &UserClaims{
+			email,
+			fullname,
+			uint(roleID),
+			jwt.RegisteredClaims{
+				ExpiresAt: jwt.NewNumericDate(time.Now().Add(30 * 24 * time.Hour)),
+				IssuedAt:  jwt.NewNumericDate(time.Now()),
+				NotBefore: jwt.NewNumericDate(time.Now()),
+			},
+		}
+
+	}
+	token := jwt.NewWithClaims(jwt.SigningMethodHS256, claims)
+	ss, err = token.SignedString(mySigningKey)
+	if err != nil {
+		err = errors.New(err.Error())
+		return "", err
+	}
+
+	return ss, nil
 }
 
 func VerifyJWT(tokenStr string) (*UserClaims, error) {

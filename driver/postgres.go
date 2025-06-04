@@ -50,5 +50,6 @@ func MigrateDB(db *gorm.DB) {
 	db.AutoMigrate(
 		&model.Role{},
 		&model.User{},
+		&model.AuthToken{},
 	)
 }
