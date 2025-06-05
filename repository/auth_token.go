@@ -7,8 +7,8 @@ import (
 
 type AuthTokenRepoInterface interface {
 	CreateAuthToken(data *model.AuthToken) error
-	GetAuthTokenByUserID(userID string) (*model.AuthToken, error)
-	DeleteAuthTokenByUserID(userID string) error
+	GetAuthTokenByUserID(token string) (*model.AuthToken, error)
+	DeleteAuthTokenByUserID(token string) error
 }
 
 type AuthTokenRepo struct {
@@ -29,18 +29,17 @@ func (repo *AuthTokenRepo) CreateAuthToken(data *model.AuthToken) error {
 	return nil
 }
 
-func (repo *AuthTokenRepo) GetAuthTokenByUserID(userID string) (*model.AuthToken, error) {
-	var authToken model.AuthToken
-	err := repo.DB.Where("user_id = ?", userID).First(&authToken).Error
+func (repo *AuthTokenRepo) GetAuthTokenByUserID(token string) (authToken *model.AuthToken, err error) {
+	err = repo.DB.Where("refresh_token = ?", token).First(&authToken).Error
 	if err != nil {
 		return nil, err
 	}
-	return &authToken, nil
+	return
 }
 
-func (repo *AuthTokenRepo) DeleteAuthTokenByUserID(userID string) error {
+func (repo *AuthTokenRepo) DeleteAuthTokenByUserID(token string) error {
 	var authToken model.AuthToken
-	err := repo.DB.Where("user_id = ?", userID).Delete(&authToken).Error
+	err := repo.DB.Where("refresh_token = ?", token).Delete(&authToken).Error
 	if err != nil {
 		return err
 	}
