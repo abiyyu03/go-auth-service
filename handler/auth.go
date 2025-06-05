@@ -8,6 +8,7 @@ import (
 
 type AuthHandlerInterface interface {
 	Login(ctx *fiber.Ctx) error
+	RefreshToken(ctx *fiber.Ctx) error
 }
 
 type AuthHandler struct {
@@ -34,4 +35,24 @@ func (a *AuthHandler) Login(ctx *fiber.Ctx) error {
 	}
 
 	return dto.ResponseSuccessStruct(ctx, "Login successfuly", 200, userLogin)
+}
+
+func (a *AuthHandler) RefreshToken(ctx *fiber.Ctx) error {
+	var refreshToken string
+
+	if err := ctx.BodyParser(&refreshToken); err != nil {
+		return dto.ResponseFailedStruct(ctx, err.Error(), fiber.ErrBadRequest.Code)
+	}
+
+	if refreshToken == "" {
+		return dto.ResponseFailedStruct(ctx, "Refresh token is required", fiber.ErrUnauthorized.Code)
+	}
+
+	newAccessToken, err := a.service.RefreshTokenRequest(ctx, refreshToken)
+
+	if err != nil {
+		return dto.ResponseFailedStruct(ctx, err.Error(), fiber.ErrUnauthorized.Code)
+	}
+
+	return dto.ResponseSuccessStruct(ctx, "Token refreshed successfully", 200, newAccessToken)
 }
