@@ -76,6 +76,7 @@ func main() {
 	api.Post("/roles", middleware.HandleJWTMiddleware(roleServices, []int{1}), handlers.Role.Create)
 	api.Put("/roles/:id", middleware.HandleJWTMiddleware(roleServices, []int{1}), handlers.Role.Update)
 	api.Post("/login", handlers.Auth.Login)
+	api.Post("/refresh-token", middleware.HandleJWTMiddleware(roleServices, []int{1}), handlers.Auth.RefreshToken)
 
 	app.Listen(":3000")
 }
