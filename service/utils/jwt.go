@@ -57,7 +57,7 @@ func CreateJWT(tokenType, email, fullname string, roleID int) (ss string, err er
 	return ss, nil
 }
 
-func VerifyJWT(tokenStr string) (*UserClaims, error) {
+func ParseJWT(tokenStr string) (*UserClaims, error) {
 	token, err := jwt.ParseWithClaims(tokenStr, &UserClaims{}, func(token *jwt.Token) (interface{}, error) {
 		_, ok := token.Method.(*jwt.SigningMethodHMAC)
 		if !ok {
